@@ -755,7 +755,7 @@ def index():
 
 if __name__ == "__main__":
     import os
-    # Use environment variable for port, default to 33081 for production
-    port = int(os.environ.get('PORT', 33081))
+    # Use environment variable for port, default to 33080 for production
+    port = int(os.environ.get('PORT', 33080))
     debug = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
     app.run(host="127.0.0.1", port=port, debug=debug)

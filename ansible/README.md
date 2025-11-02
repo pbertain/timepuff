@@ -53,7 +53,7 @@ Edit `group_vars/pb_home.yml` to customize deployment settings:
 
 - `app_name`: Application name (default: rantoo)
 - `app_directory`: Installation directory (default: /opt/rantoo)
-- `app_port`: Flask application port (default: 33081)
+- `app_port`: Flask application port (default: 33080)
 
 ## Deployment
 
@@ -146,7 +146,7 @@ sudo systemctl start rantoo
 
 ### Test Application Health
 ```bash
-curl http://your-host-ip:33081/health
+curl http://your-host-ip:33080/health
 ```
 
 ### Manual Service Restart

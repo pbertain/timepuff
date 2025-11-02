@@ -73,7 +73,7 @@ restart() {
 health() {
     print_header "Application Health Check"
     cd "$ANSIBLE_DIR"
-    ansible -i "../$INVENTORY" -u "$ANSIBLE_USER" --private-key "$PRIVATE_KEY" pb_home -m uri -a "url=http://localhost:33081/health return_content=yes"
+    ansible -i "../$INVENTORY" -u "$ANSIBLE_USER" --private-key "$PRIVATE_KEY" pb_home -m uri -a "url=http://localhost:33080/health return_content=yes"
 }
 
 # Main execution

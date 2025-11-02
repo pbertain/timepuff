@@ -3,7 +3,7 @@ app_name: rantoo
 app_user: rantoo
 app_group: rantoo
 app_directory: /opt/rantoo
-app_port: 33081
+app_port: 33080
 
 # Python and Flask configuration
 python_version: "3.10"
