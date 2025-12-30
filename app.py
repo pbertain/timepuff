@@ -235,7 +235,7 @@ class DateTimeToEpoch(Resource):
             api.abort(400, message=str(e))
 
 # Curl-friendly API endpoints (plain text) - direct routes for proper functionality
-@app.route('/curl/v1/epoch/<float:epoch_time>')
+@app.route('/curl/v1/epoch/<int:epoch_time>')
 def curl_epoch_to_datetime(epoch_time):
     """Convert epoch time to human readable datetime (plain text)"""
     try:
@@ -253,7 +253,7 @@ def curl_datetime_to_epoch(datetime_str):
         timezone_param = request.args.get('tz', '').strip()
         epoch_time = human_to_epoch(datetime_str, input_tz=timezone_param if timezone_param else None)
         human_time = epoch_to_human(epoch_time, target_tz=timezone_param if timezone_param else None)
-        return f"Input:     {datetime_str}\nEpoch:     {epoch_time}\nDatetime:  {human_time}\n\n"
+        return f"Input:     {datetime_str}\nEpoch:     {epoch_time}\nDatetime:  {datetime_str}\n\n"
     except Exception as e:
         return f"Error: {str(e)}\n\n", 400
 
