@@ -235,11 +235,13 @@ class DateTimeToEpoch(Resource):
             api.abort(400, message=str(e))
 
 # Curl-friendly API endpoints (plain text) - direct routes for proper functionality
-@app.route('/curl/v1/epoch/<int:epoch_time>')
+@app.route('/curl/v1/epoch/<float:epoch_time>')
 def curl_epoch_to_datetime(epoch_time):
     """Convert epoch time to human readable datetime (plain text)"""
     try:
-        human_time = epoch_to_human(epoch_time)
+        # Get timezone parameter from query string
+        timezone_param = request.args.get('tz', '').strip()
+        human_time = epoch_to_human(epoch_time, target_tz=timezone_param if timezone_param else None)
         return f"Input:     {epoch_time}\nEpoch:     {epoch_time}\nDatetime:  {human_time}\n\n"
     except Exception as e:
         return f"Error: {str(e)}\n\n", 400
@@ -248,10 +250,21 @@ def curl_epoch_to_datetime(epoch_time):
 def curl_datetime_to_epoch(datetime_str):
     """Convert human readable datetime to epoch time (plain text)"""
     try:
-        epoch_time = human_to_epoch(datetime_str)
-        return f"Input:     {datetime_str}\nEpoch:     {epoch_time}\nDatetime:  {datetime_str}\n\n"
+        timezone_param = request.args.get('tz', '').strip()
+        epoch_time = human_to_epoch(datetime_str, input_tz=timezone_param if timezone_param else None)
+        human_time = epoch_to_human(epoch_time, target_tz=timezone_param if timezone_param else None)
+        return f"Input:     {datetime_str}\nEpoch:     {epoch_time}\nDatetime:  {human_time}\n\n"
     except Exception as e:
         return f"Error: {str(e)}\n\n", 400
+
+# Custom 404 error handler for curl endpoints
+@app.errorhandler(404)
+def handle_404(e):
+    """Handle 404 errors with plain text for curl endpoints, HTML for others"""
+    if request.path.startswith('/curl/'):
+        return f"Error: Endpoint not found. Check your URL and try again.\n\n", 404
+    # For non-curl endpoints, use default HTML 404
+    return e
 
 @app.route("/api/v1/swagger.json")
 def swagger_json():
@@ -489,14 +502,21 @@ def swagger_ui():
                             "get": {{
                                 "tags": ["curl/v1"],
                                 "summary": "Convert epoch time to human readable datetime (plain text)",
-                                "description": "Convert epoch time to human readable datetime (plain text)",
+                                "description": "Convert epoch time to human readable datetime (plain text). Supports decimal epoch times and optional timezone parameter.",
                                 "parameters": [
                                     {{
                                         "name": "epoch_time",
                                         "in": "path",
                                         "required": true,
-                                        "type": "integer",
-                                        "description": "Epoch timestamp"
+                                        "type": "number",
+                                        "description": "Epoch timestamp (supports decimals)"
+                                    }},
+                                    {{
+                                        "name": "tz",
+                                        "in": "query",
+                                        "required": false,
+                                        "type": "string",
+                                        "description": "Target timezone (e.g., 'pst', 'utc', 'europe/london')"
                                     }}
                                 ],
                                 "responses": {{
@@ -514,7 +534,7 @@ def swagger_ui():
                             "get": {{
                                 "tags": ["curl/v1"],
                                 "summary": "Convert human readable datetime to epoch time (plain text)",
-                                "description": "Convert human readable datetime to epoch time (plain text)",
+                                "description": "Convert human readable datetime to epoch time (plain text). Supports optional timezone parameter.",
                                 "parameters": [
                                     {{
                                         "name": "datetime_str",
@@ -522,6 +542,13 @@ def swagger_ui():
                                         "required": true,
                                         "type": "string",
                                         "description": "Datetime string in various formats"
+                                    }},
+                                    {{
+                                        "name": "tz",
+                                        "in": "query",
+                                        "required": false,
+                                        "type": "string",
+                                        "description": "Input timezone (e.g., 'pst', 'utc', 'europe/london')"
                                     }}
                                 ],
                                 "responses": {{
