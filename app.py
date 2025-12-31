@@ -209,7 +209,6 @@ error_response = api_v1.model('ErrorResponse', {
 @api_v1.route('/epoch/<epoch_time>')
 class EpochToDateTime(Resource):
     @api_v1.doc('epoch_to_datetime', description='Convert epoch time to human readable datetime. Supports timezone query parameter (?tz=pst)')
-    @api_v1.marshal_with(epoch_response)
     def get(self, epoch_time):
         """Convert epoch time to human readable datetime"""
         try:
@@ -219,11 +218,14 @@ class EpochToDateTime(Resource):
             # Get timezone parameter from query string
             timezone_param = request.args.get('tz', '').strip()
             human_time = epoch_to_human(epoch_float, target_tz=timezone_param if timezone_param else None)
-            return {
-                'input': epoch_time,
-                'epoch': epoch_float,
-                'datetime': human_time
-            }
+            
+            # Return in explicit order: input, epoch, datetime (using OrderedDict to ensure order)
+            from collections import OrderedDict
+            return OrderedDict([
+                ('input', epoch_time),
+                ('epoch', epoch_float),
+                ('datetime', human_time)
+            ])
         except ValueError:
             api.abort(400, message="Invalid epoch time format")
         except Exception as e:
@@ -232,7 +234,6 @@ class EpochToDateTime(Resource):
 @api_v1.route('/datetime/<string:datetime_str>')
 class DateTimeToEpoch(Resource):
     @api_v1.doc('datetime_to_epoch', description='Convert human readable datetime to epoch time. Supports timezone query parameter (?tz=pst)')
-    @api_v1.marshal_with(datetime_response)
     def get(self, datetime_str):
         """Convert human readable datetime to epoch time"""
         try:
@@ -240,12 +241,13 @@ class DateTimeToEpoch(Resource):
             timezone_param = request.args.get('tz', '').strip()
             epoch_time = human_to_epoch(datetime_str, input_tz=timezone_param if timezone_param else None)
             
-            # Return in same order as curl: Input, Epoch, DateTime (original input format to match curl)
-            return {
-                'input': datetime_str,
-                'epoch': epoch_time,
-                'datetime': datetime_str  # Return original input format to match curl behavior
-            }
+            # Return in explicit order: input, epoch, datetime (using OrderedDict to ensure order)
+            from collections import OrderedDict
+            return OrderedDict([
+                ('input', datetime_str),
+                ('epoch', epoch_time),
+                ('datetime', datetime_str)  # Return original input format to match curl behavior
+            ])
         except Exception as e:
             api.abort(400, message=str(e))
 
