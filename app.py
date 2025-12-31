@@ -67,18 +67,22 @@ def normalize_timezone(tz_input):
     tz_map = {
         # Pacific timezone
         'pacific': 'America/Los_Angeles',
+        'pt': 'America/Los_Angeles',
         'pst': 'America/Los_Angeles',
         'pdt': 'America/Los_Angeles',
         # Eastern timezone
         'eastern': 'America/New_York',
+        'et': 'America/New_York',
         'est': 'America/New_York',
         'edt': 'America/New_York',
         # Central timezone
         'central': 'America/Chicago',
+        'ct': 'America/Chicago',
         'cst': 'America/Chicago',
         'cdt': 'America/Chicago',
         # Mountain timezone
         'mountain': 'America/Denver',
+        'mt': 'America/Denver',
         'mst': 'America/Denver',
         'mdt': 'America/Denver',
         # Moscow timezone
