@@ -188,6 +188,42 @@ def human_to_epoch(human_str, input_tz=None):
     else:
         raise ValueError("Invalid datetime format. Supported formats: YYYY-MM-DD-HHMMSS, YYYYMMDDHHMMSS, YYYYMMDDHHMM, MM/DD/YYYY HH:MM")
 
+# SWET (Star Wars Epoch Time) Functions
+# SWET epoch start: May 26, 1977 00:00:00 UTC (day after Star Wars: A New Hope release)
+SWET_EPOCH_START = datetime(1977, 5, 26, 0, 0, 0, tzinfo=timezone.utc)
+SWET_EPOCH_UNIX = int(SWET_EPOCH_START.timestamp())  # 233280000
+
+def unix_to_swet(unix_timestamp):
+    """Convert Unix timestamp to SWET (Star Wars Epoch Time)."""
+    return int(float(unix_timestamp)) - SWET_EPOCH_UNIX
+
+def swet_to_unix(swet_timestamp):
+    """Convert SWET timestamp to Unix timestamp."""
+    return int(float(swet_timestamp)) + SWET_EPOCH_UNIX
+
+def swet_to_human(swet_timestamp, target_tz=None):
+    """Convert SWET timestamp to human readable datetime string."""
+    unix_timestamp = swet_to_unix(swet_timestamp)
+    return epoch_to_human(unix_timestamp, target_tz)
+
+def human_to_swet(human_str, input_tz=None):
+    """Convert human readable datetime to SWET timestamp."""
+    unix_timestamp = human_to_epoch(human_str, input_tz)
+    return unix_to_swet(unix_timestamp)
+
+def get_swet_info():
+    """Get current SWET time and related information."""
+    now_unix = int(datetime.now(timezone.utc).timestamp())
+    current_swet = unix_to_swet(now_unix)
+    years_since_release = current_swet / (365.25 * 24 * 3600)  # Account for leap years
+    
+    return {
+        'current_swet': current_swet,
+        'years_since_release': round(years_since_release, 1),
+        'swet_epoch_start': '1977-05-26 00:00:00 UTC',
+        'description': 'Star Wars Epoch Time - seconds since the day after Star Wars: A New Hope release'
+    }
+
 # Define response models for Swagger documentation
 epoch_response = api_v1.model('EpochResponse', {
     'epoch': fields.Integer(description='Epoch timestamp', example=1757509860),
@@ -230,6 +266,65 @@ class EpochToDateTime(Resource):
             api.abort(400, message="Invalid epoch time format")
         except Exception as e:
             api.abort(400, message=str(e))
+
+@api_v1.route('/swet/<swet_time>')
+class SWETToDateTime(Resource):
+    @api_v1.doc('swet_to_datetime', description='Convert SWET (Star Wars Epoch Time) to human readable datetime. Supports timezone query parameter (?tz=pst)')
+    def get(self, swet_time):
+        """Convert SWET time to human readable datetime"""
+        try:
+            # Convert swet_time to float to handle both integers and decimals
+            swet_float = float(swet_time)
+            
+            # Get timezone parameter from query string
+            timezone_param = request.args.get('tz', '').strip()
+            human_time = swet_to_human(swet_float, target_tz=timezone_param if timezone_param else None)
+            unix_time = swet_to_unix(swet_float)
+            
+            # Return in explicit order: input, swet, unix, datetime (using OrderedDict to ensure order)
+            from collections import OrderedDict
+            return OrderedDict([
+                ('input', swet_time),
+                ('swet', swet_float),
+                ('unix', unix_time),
+                ('datetime', human_time)
+            ])
+        except ValueError:
+            api.abort(400, message="Invalid SWET time format")
+        except Exception as e:
+            api.abort(400, message=str(e))
+
+@api_v1.route('/datetime-to-swet/<string:datetime_str>')
+class DateTimeToSWET(Resource):
+    @api_v1.doc('datetime_to_swet', description='Convert human readable datetime to SWET (Star Wars Epoch Time). Supports timezone query parameter (?tz=pst)')
+    def get(self, datetime_str):
+        """Convert human readable datetime to SWET time"""
+        try:
+            # Get timezone parameter from query string
+            timezone_param = request.args.get('tz', '').strip()
+            swet_time = human_to_swet(datetime_str, input_tz=timezone_param if timezone_param else None)
+            unix_time = swet_to_unix(swet_time)
+            
+            # Return in explicit order: input, swet, unix, datetime (using OrderedDict to ensure order)
+            from collections import OrderedDict
+            return OrderedDict([
+                ('input', datetime_str),
+                ('swet', swet_time),
+                ('unix', unix_time),
+                ('datetime', datetime_str)  # Return original input format to match curl behavior
+            ])
+        except Exception as e:
+            api.abort(400, message=str(e))
+
+@api_v1.route('/swet-info')
+class SWETInfo(Resource):
+    @api_v1.doc('swet_info', description='Get current SWET (Star Wars Epoch Time) information and statistics')
+    def get(self):
+        """Get current SWET information"""
+        try:
+            return get_swet_info()
+        except Exception as e:
+            api.abort(500, message=str(e))
 
 @api_v1.route('/datetime/<string:datetime_str>')
 class DateTimeToEpoch(Resource):
@@ -282,6 +377,57 @@ def curl_datetime_to_epoch(datetime_str):
         timezone_param = request.args.get('tz', '').strip()
         epoch_time = human_to_epoch(datetime_str, input_tz=timezone_param if timezone_param else None)
         return f"Input:     {datetime_str}\nEpoch:     {epoch_time}\nDatetime:  {datetime_str}\n\n"
+    except Exception as e:
+        return f"Error: {str(e)}\n\n", 400
+
+@app.route('/curl/v1/swet/<swet_time>')
+def curl_swet_to_datetime(swet_time):
+    """Convert SWET time to human readable datetime (plain text)"""
+    try:
+        # Convert swet_time to float to handle both integers and decimals
+        swet_float = float(swet_time)
+        
+        # Get timezone parameter from query string
+        timezone_param = request.args.get('tz', '').strip()
+        human_time = swet_to_human(swet_float, target_tz=timezone_param if timezone_param else None)
+        unix_time = swet_to_unix(swet_float)
+        
+        # For display purposes, if the input was an integer, show it as an integer
+        if '.' not in swet_time:
+            display_swet = int(swet_float)
+        else:
+            display_swet = swet_float
+            
+        return f"Input:     {swet_time}\nSWET:      {display_swet}\nUnix:      {unix_time}\nDatetime:  {human_time}\n\n"
+    except ValueError:
+        return f"Error: Invalid SWET time format\n\n", 400
+    except Exception as e:
+        return f"Error: {str(e)}\n\n", 400
+
+@app.route('/curl/v1/datetime-to-swet/<string:datetime_str>')
+def curl_datetime_to_swet(datetime_str):
+    """Convert human readable datetime to SWET time (plain text)"""
+    try:
+        timezone_param = request.args.get('tz', '').strip()
+        swet_time = human_to_swet(datetime_str, input_tz=timezone_param if timezone_param else None)
+        unix_time = swet_to_unix(swet_time)
+        return f"Input:     {datetime_str}\nSWET:      {swet_time}\nUnix:      {unix_time}\nDatetime:  {datetime_str}\n\n"
+    except Exception as e:
+        return f"Error: {str(e)}\n\n", 400
+
+@app.route('/curl/v1/swet-info')
+def curl_swet_info():
+    """Get current SWET information (plain text)"""
+    try:
+        info = get_swet_info()
+        return f"""SWET (Star Wars Epoch Time) Information:
+
+Current SWET:        {info['current_swet']}
+Years Since Release: {info['years_since_release']} years
+SWET Epoch Start:    {info['swet_epoch_start']}
+Description:         {info['description']}
+
+"""
     except Exception as e:
         return f"Error: {str(e)}\n\n", 400
 
@@ -589,7 +735,87 @@ def swagger_ui():
                                     }}
                                 }}
                             }}
-                        }}
+                        }},
+                       "/curl/v1/swet/{{swet_time}}": {{
+                           "get": {{
+                               "tags": ["curl/v1"],
+                               "summary": "Convert SWET time to human readable datetime (plain text)",
+                               "description": "Convert SWET (Star Wars Epoch Time) to human readable datetime (plain text). Supports decimal SWET times and optional timezone parameter.",
+                               "parameters": [
+                                   {{
+                                       "name": "swet_time",
+                                       "in": "path",
+                                       "required": true,
+                                       "type": "number",
+                                       "description": "SWET timestamp (supports decimals)"
+                                   }},
+                                   {{
+                                       "name": "tz",
+                                       "in": "query",
+                                       "required": false,
+                                       "type": "string",
+                                       "description": "Target timezone (e.g., 'pst', 'utc', 'europe/london')"
+                                   }}
+                               ],
+                               "responses": {{
+                                   "200": {{
+                                       "description": "Success",
+                                       "schema": {{
+                                           "type": "string",
+                                           "example": "Input:     1524277860\\nSWET:      1524277860\\nUnix:      1757557860\\nDatetime:  Wed 2025-09-10 13:11:00\\n\\n"
+                                       }}
+                                   }}
+                               }}
+                           }}
+                       }},
+                       "/curl/v1/datetime-to-swet/{{datetime_str}}": {{
+                           "get": {{
+                               "tags": ["curl/v1"],
+                               "summary": "Convert human readable datetime to SWET time (plain text)",
+                               "description": "Convert human readable datetime to SWET (Star Wars Epoch Time) (plain text). Supports optional timezone parameter.",
+                               "parameters": [
+                                   {{
+                                       "name": "datetime_str",
+                                       "in": "path",
+                                       "required": true,
+                                       "type": "string",
+                                       "description": "Datetime string in various formats"
+                                   }},
+                                   {{
+                                       "name": "tz",
+                                       "in": "query",
+                                       "required": false,
+                                       "type": "string",
+                                       "description": "Input timezone (e.g., 'pst', 'utc', 'europe/london')"
+                                   }}
+                               ],
+                               "responses": {{
+                                   "200": {{
+                                       "description": "Success",
+                                       "schema": {{
+                                           "type": "string",
+                                           "example": "Input:     2025-09-10-131100\\nSWET:      1524277860\\nUnix:      1757557860\\nDatetime:  2025-09-10-131100\\n\\n"
+                                       }}
+                                   }}
+                               }}
+                           }}
+                       }},
+                       "/curl/v1/swet-info": {{
+                           "get": {{
+                               "tags": ["curl/v1"],
+                               "summary": "Get current SWET information (plain text)",
+                               "description": "Get current SWET (Star Wars Epoch Time) information and statistics (plain text).",
+                               "responses": {{
+                                   "200": {{
+                                       "description": "Success",
+                                       "schema": {{
+                                           "type": "string",
+                                           "example": "SWET (Star Wars Epoch Time) Information:\\n\\nCurrent SWET:        1535184278\\nYears Since Release: 48.0 years\\nSWET Epoch Start:    1977-05-26 00:00:00 UTC\\nDescription:         Star Wars Epoch Time - seconds since the day after Star Wars: A New Hope release\\n\\n"
+                                       }}
+                                   }}
+                               }}
+                           }}
+                       }}
                     }}
                 }};
                 
