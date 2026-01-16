@@ -262,7 +262,14 @@ def curl_epoch_to_datetime(epoch_time):
         # Get timezone parameter from query string
         timezone_param = request.args.get('tz', '').strip()
         human_time = epoch_to_human(epoch_float, target_tz=timezone_param if timezone_param else None)
-        return f"Input:     {epoch_time}\nEpoch:     {epoch_float}\nDatetime:  {human_time}\n\n"
+        
+        # For display purposes, if the input was an integer, show it as an integer
+        if '.' not in epoch_time:
+            display_epoch = int(epoch_float)
+        else:
+            display_epoch = epoch_float
+            
+        return f"Input:     {epoch_time}\nEpoch:     {display_epoch}\nDatetime:  {human_time}\n\n"
     except ValueError:
         return f"Error: Invalid epoch time format\n\n", 400
     except Exception as e:
@@ -274,7 +281,6 @@ def curl_datetime_to_epoch(datetime_str):
     try:
         timezone_param = request.args.get('tz', '').strip()
         epoch_time = human_to_epoch(datetime_str, input_tz=timezone_param if timezone_param else None)
-        human_time = epoch_to_human(epoch_time, target_tz=timezone_param if timezone_param else None)
         return f"Input:     {datetime_str}\nEpoch:     {epoch_time}\nDatetime:  {datetime_str}\n\n"
     except Exception as e:
         return f"Error: {str(e)}\n\n", 400
