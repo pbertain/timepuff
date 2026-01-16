@@ -990,6 +990,73 @@ def redoc():
             #redoc-container {{
                 max-width: 1200px;
                 margin: 0 auto;
+                background: rgba(255, 255, 255, 0.98);
+                border-radius: 15px;
+                padding: 20px;
+                box-shadow: 0 0 20px rgba(65, 87, 220, 0.3);
+            }}
+            
+            /* Custom ReDoc styling for better readability */
+            redoc {{
+                --redoc-font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            }}
+            
+            /* Override ReDoc colors for better readability */
+            .redoc-wrap {{
+                color: #333 !important;
+            }}
+            
+            .menu-content {{
+                background: #f8f9ff !important;
+                color: #333 !important;
+            }}
+            
+            .api-content {{
+                background: #ffffff !important;
+                color: #333 !important;
+            }}
+            
+            h1, h2, h3, h4, h5, h6 {{
+                color: #1a237e !important;
+            }}
+            
+            .menu-content h1,
+            .menu-content h2,
+            .menu-content h3,
+            .menu-content h4,
+            .menu-content h5 {{
+                color: #4157dc !important;
+            }}
+            
+            .menu-content a {{
+                color: #6d28d9 !important;
+            }}
+            
+            .menu-content a:hover {{
+                color: #8b5cf6 !important;
+            }}
+            
+            pre, code {{
+                background: #f0f0f7 !important;
+                color: #333 !important;
+                border: 1px solid #e0e0ff !important;
+            }}
+            
+            .redoc-markdown p {{
+                color: #444 !important;
+            }}
+            
+            .redoc-markdown li {{
+                color: #444 !important;
+            }}
+            
+            .operation-type {{
+                color: #ffffff !important;
+            }}
+            
+            .redoc-json {{
+                background: #f8f9ff !important;
+                border: 1px solid #d0d0ff !important;
             }}
         </style>
     </head>
@@ -1007,7 +1074,36 @@ def redoc():
         <div id="redoc-container"></div>
         <script src="https://cdn.jsdelivr.net/npm/redoc@2.1.3/bundles/redoc.standalone.js"></script>
         <script>
-            Redoc.init('/api/v1/swagger.json', {{}}, document.getElementById('redoc-container'));
+            Redoc.init('/api/v1/swagger.json', {{
+                theme: {{
+                    colors: {{
+                        primary: {{
+                            main: '#4157dc'
+                        }},
+                        text: {{
+                            primary: '#333333',
+                            secondary: '#666666'
+                        }},
+                        gray: {{
+                            50: '#f8f9ff',
+                            100: '#f0f0f7'
+                        }}
+                    }},
+                    typography: {{
+                        fontSize: '14px',
+                        lineHeight: '1.5em',
+                        code: {{
+                            fontSize: '13px',
+                            color: '#333333',
+                            backgroundColor: '#f0f0f7'
+                        }},
+                        headings: {{
+                            fontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif',
+                            color: '#1a237e'
+                        }}
+                    }}
+                }}
+            }}, document.getElementById('redoc-container'));
         </script>
     </body>
     </html>
