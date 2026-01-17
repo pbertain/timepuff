@@ -254,12 +254,14 @@ class EpochToDateTime(Resource):
             # Get timezone parameter from query string
             timezone_param = request.args.get('tz', '').strip()
             human_time = epoch_to_human(epoch_float, target_tz=timezone_param if timezone_param else None)
+            swet_time = unix_to_swet(epoch_float)
             
-            # Return in explicit order: input, epoch, datetime (using OrderedDict to ensure order)
+            # Return in explicit order: input, epoch, swet, datetime (using OrderedDict to ensure order)
             from collections import OrderedDict
             return OrderedDict([
                 ('input', epoch_time),
                 ('epoch', epoch_float),
+                ('swet', swet_time),
                 ('datetime', human_time)
             ])
         except ValueError:
@@ -335,12 +337,14 @@ class DateTimeToEpoch(Resource):
             # Get timezone parameter from query string
             timezone_param = request.args.get('tz', '').strip()
             epoch_time = human_to_epoch(datetime_str, input_tz=timezone_param if timezone_param else None)
+            swet_time = unix_to_swet(epoch_time)
             
-            # Return in explicit order: input, epoch, datetime (using OrderedDict to ensure order)
+            # Return in explicit order: input, epoch, swet, datetime (using OrderedDict to ensure order)
             from collections import OrderedDict
             return OrderedDict([
                 ('input', datetime_str),
                 ('epoch', epoch_time),
+                ('swet', swet_time),
                 ('datetime', datetime_str)  # Return original input format to match curl behavior
             ])
         except Exception as e:
@@ -364,7 +368,8 @@ def curl_epoch_to_datetime(epoch_time):
         else:
             display_epoch = epoch_float
             
-        return f"Input:     {epoch_time}\nEpoch:     {display_epoch}\nDatetime:  {human_time}\n\n"
+        swet_time = unix_to_swet(epoch_float)
+        return f"Input:     {epoch_time}\nEpoch:     {display_epoch}\nSWET:      {swet_time}\nDatetime:  {human_time}\n\n"
     except ValueError:
         return f"Error: Invalid epoch time format\n\n", 400
     except Exception as e:
@@ -376,7 +381,8 @@ def curl_datetime_to_epoch(datetime_str):
     try:
         timezone_param = request.args.get('tz', '').strip()
         epoch_time = human_to_epoch(datetime_str, input_tz=timezone_param if timezone_param else None)
-        return f"Input:     {datetime_str}\nEpoch:     {epoch_time}\nDatetime:  {datetime_str}\n\n"
+        swet_time = unix_to_swet(epoch_time)
+        return f"Input:     {datetime_str}\nEpoch:     {epoch_time}\nSWET:      {swet_time}\nDatetime:  {datetime_str}\n\n"
     except Exception as e:
         return f"Error: {str(e)}\n\n", 400
 
@@ -465,8 +471,15 @@ def swagger_json():
                             "name": "epoch_time",
                             "in": "path",
                             "required": True,
-                            "schema": {"type": "integer"},
-                            "description": "Epoch timestamp"
+                            "schema": {"type": "number"},
+                            "description": "Epoch timestamp (supports decimals)"
+                        },
+                        {
+                            "name": "tz",
+                            "in": "query",
+                            "required": False,
+                            "schema": {"type": "string"},
+                            "description": "Target timezone (e.g., 'pst', 'utc', 'europe/london')"
                         }
                     ],
                     "responses": {
@@ -479,6 +492,7 @@ def swagger_json():
                                         "properties": {
                                             "input": {"type": "string", "example": "1757509860"},
                                             "epoch": {"type": "integer", "example": 1757509860},
+                                            "swet": {"type": "integer", "example": 1524057060},
                                             "datetime": {"type": "string", "example": "Wed 2025-09-10 13:11:00"}
                                         }
                                     }
@@ -499,6 +513,13 @@ def swagger_json():
                             "required": True,
                             "schema": {"type": "string"},
                             "description": "Datetime string in various formats"
+                        },
+                        {
+                            "name": "tz",
+                            "in": "query",
+                            "required": False,
+                            "schema": {"type": "string"},
+                            "description": "Input timezone (e.g., 'pst', 'utc', 'europe/london')"
                         }
                     ],
                     "responses": {
@@ -511,7 +532,112 @@ def swagger_json():
                                         "properties": {
                                             "input": {"type": "string", "example": "2025-09-10-131100"},
                                             "epoch": {"type": "integer", "example": 1757509860},
+                                            "swet": {"type": "integer", "example": 1524057060},
+                                            "datetime": {"type": "string", "example": "2025-09-10-131100"}
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "/api/v1/swet/{swet_time}": {
+                "get": {
+                    "tags": ["SWET API endpoints (v1)"],
+                    "summary": "Convert SWET (Star Wars Epoch Time) to human readable datetime",
+                    "parameters": [
+                        {
+                            "name": "swet_time",
+                            "in": "path",
+                            "required": True,
+                            "schema": {"type": "number"},
+                            "description": "SWET timestamp (supports decimals)"
+                        },
+                        {
+                            "name": "tz",
+                            "in": "query",
+                            "required": False,
+                            "schema": {"type": "string"},
+                            "description": "Target timezone (e.g., 'pst', 'utc', 'europe/london')"
+                        }
+                    ],
+                    "responses": {
+                        "200": {
+                            "description": "Success",
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "input": {"type": "string", "example": "1524057060"},
+                                            "swet": {"type": "integer", "example": 1524057060},
+                                            "unix": {"type": "integer", "example": 1757509860},
                                             "datetime": {"type": "string", "example": "Wed 2025-09-10 13:11:00"}
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "/api/v1/datetime-to-swet/{datetime_str}": {
+                "get": {
+                    "tags": ["SWET API endpoints (v1)"],
+                    "summary": "Convert human readable datetime to SWET (Star Wars Epoch Time)",
+                    "parameters": [
+                        {
+                            "name": "datetime_str",
+                            "in": "path",
+                            "required": True,
+                            "schema": {"type": "string"},
+                            "description": "Datetime string in various formats"
+                        },
+                        {
+                            "name": "tz",
+                            "in": "query",
+                            "required": False,
+                            "schema": {"type": "string"},
+                            "description": "Input timezone (e.g., 'pst', 'utc', 'europe/london')"
+                        }
+                    ],
+                    "responses": {
+                        "200": {
+                            "description": "Success",
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "input": {"type": "string", "example": "2025-09-10-131100"},
+                                            "swet": {"type": "integer", "example": 1524057060},
+                                            "unix": {"type": "integer", "example": 1757509860},
+                                            "datetime": {"type": "string", "example": "2025-09-10-131100"}
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "/api/v1/swet-info": {
+                "get": {
+                    "tags": ["SWET API endpoints (v1)"],
+                    "summary": "Get current SWET (Star Wars Epoch Time) information",
+                    "responses": {
+                        "200": {
+                            "description": "Success",
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "current_swet": {"type": "integer", "example": 1535098909},
+                                            "years_since_release": {"type": "number", "example": 48.6},
+                                            "swet_epoch_start": {"type": "string", "example": "1977-05-26 00:00:00 UTC"},
+                                            "description": {"type": "string", "example": "Star Wars Epoch Time - seconds since the day after Star Wars: A New Hope release"}
                                         }
                                     }
                                 }
@@ -927,30 +1053,41 @@ def redoc():
     <html>
     <head>
         <title>TimePuff API Documentation</title>
+        <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui.css" />
+        <link rel="stylesheet" type="text/css" href="/static/swagger-ui.css" />
         <link rel="stylesheet" type="text/css" href="/static/main.css" />
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/redoc@2.1.3/bundles/redoc.standalone.css" />
         <style>
+            html {{
+                box-sizing: border-box;
+                overflow: -moz-scrollbars-vertical;
+                overflow-y: scroll;
+            }}
+            *, *:before, *:after {{
+                box-sizing: inherit;
+            }}
             body {{
-                margin: 0;
-                padding: 20px;
+                margin:0;
+                background: radial-gradient(ellipse at top, #1a237e 60%, #000 100%);
+                font-family: 'Orbitron', 'Consolas', 'Monaco', monospace;
+                padding-bottom: 40px;
             }}
             .header-container {{
                 background: rgba(22, 26, 70, 0.92);
                 border-radius: 20px;
                 max-width: 1200px;
-                margin: 0 auto 20px auto;
+                margin: 20px auto;
                 padding: 32px;
                 text-align: center;
                 box-shadow: 0 0 28px #4157dc, 0 0 4px #00eaff;
             }}
-            h1 {{
+            .swagger-header h1 {{
                 margin: 0 0 10px 0;
                 color: #00eaff;
                 letter-spacing: 1px;
                 font-size: 3em;
                 text-shadow: 0 0 10px #6d28d9, 0 0 20px #7c3aed, 0 0 30px #8b5cf6;
             }}
-            h2.subtitle {{
+            .swagger-header h2.subtitle {{
                 margin: 0 0 20px 0;
                 color: #a78bfa;
                 letter-spacing: 0.5px;
@@ -959,111 +1096,22 @@ def redoc():
                 text-shadow: 0 0 5px rgba(167, 139, 250, 0.5);
                 opacity: 0.9;
             }}
-            .nav-section {{
-                display: flex;
-                justify-content: center;
-                gap: 15px;
-                margin-top: 20px;
-                flex-wrap: wrap;
-            }}
-            .nav-button {{
-                color: #a78bfa;
-                text-decoration: none;
-                font-size: 0.9em;
-                font-weight: 600;
-                padding: 10px 20px;
-                border: 2px solid #a78bfa;
-                border-radius: 12px;
-                background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(167, 139, 250, 0.1));
-                transition: all 0.4s ease;
-                display: inline-block;
-                text-shadow: 0 0 8px rgba(167, 139, 250, 0.6);
-                box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
-            }}
-            .nav-button:hover {{
-                color: #c4b5fd;
-                background: linear-gradient(135deg, rgba(139, 92, 246, 0.4), rgba(167, 139, 250, 0.2));
-                box-shadow: 0 6px 20px rgba(139, 92, 246, 0.5), 0 0 15px rgba(196, 181, 253, 0.4);
-                transform: translateY(-2px) scale(1.05);
-                border-color: #c4b5fd;
-            }}
             #redoc-container {{
                 max-width: 1200px;
                 margin: 0 auto;
+                padding: 20px;
                 background: rgba(255, 255, 255, 0.98);
                 border-radius: 15px;
-                padding: 20px;
                 box-shadow: 0 0 20px rgba(65, 87, 220, 0.3);
-            }}
-            
-            /* Custom ReDoc styling for better readability */
-            redoc {{
-                --redoc-font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            }}
-            
-            /* Override ReDoc colors for better readability */
-            .redoc-wrap {{
-                color: #333 !important;
-            }}
-            
-            .menu-content {{
-                background: #f8f9ff !important;
-                color: #333 !important;
-            }}
-            
-            .api-content {{
-                background: #ffffff !important;
-                color: #333 !important;
-            }}
-            
-            h1, h2, h3, h4, h5, h6 {{
-                color: #1a237e !important;
-            }}
-            
-            .menu-content h1,
-            .menu-content h2,
-            .menu-content h3,
-            .menu-content h4,
-            .menu-content h5 {{
-                color: #4157dc !important;
-            }}
-            
-            .menu-content a {{
-                color: #6d28d9 !important;
-            }}
-            
-            .menu-content a:hover {{
-                color: #8b5cf6 !important;
-            }}
-            
-            pre, code {{
-                background: #f0f0f7 !important;
-                color: #333 !important;
-                border: 1px solid #e0e0ff !important;
-            }}
-            
-            .redoc-markdown p {{
-                color: #444 !important;
-            }}
-            
-            .redoc-markdown li {{
-                color: #444 !important;
-            }}
-            
-            .operation-type {{
-                color: #ffffff !important;
-            }}
-            
-            .redoc-json {{
-                background: #f8f9ff !important;
-                border: 1px solid #d0d0ff !important;
             }}
         </style>
     </head>
-    <body style="background: radial-gradient(ellipse at top, #1a237e 60%, #000 100%); min-height: 100vh; padding-bottom: 40px;">
+    <body>
         <div class="header-container">
-            <h1>TimePuff</h1>
-            <h2 class="subtitle">The Epic Epoch Date 📅 & Time ⏳ Converter</h2>
+            <div class="swagger-header">
+                <h1>TimePuff</h1>
+                <h2 class="subtitle">The Epic Epoch Date 📅 & Time ⏳ Converter</h2>
+            </div>
             <div class="nav-section">
                 <a href="/api/docs/" class="nav-button">🚀 Try it out</a>
                 <a href="/api/redoc/" class="nav-button">📖 API Docs</a>
@@ -1081,8 +1129,8 @@ def redoc():
                             main: '#4157dc'
                         }},
                         text: {{
-                            primary: '#333333',
-                            secondary: '#666666'
+                            primary: '#1a237e',
+                            secondary: '#6d28d9'
                         }},
                         gray: {{
                             50: '#f8f9ff',
@@ -1092,13 +1140,14 @@ def redoc():
                     typography: {{
                         fontSize: '14px',
                         lineHeight: '1.5em',
+                        fontFamily: 'Orbitron, Consolas, Monaco, monospace',
                         code: {{
                             fontSize: '13px',
-                            color: '#333333',
+                            color: '#1a237e',
                             backgroundColor: '#f0f0f7'
                         }},
                         headings: {{
-                            fontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif',
+                            fontFamily: 'Orbitron, Consolas, Monaco, monospace',
                             color: '#1a237e'
                         }}
                     }}
