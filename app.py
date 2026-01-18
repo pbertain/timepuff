@@ -715,6 +715,7 @@ def swagger_ui():
                 <h2 class="subtitle">The Epic Epoch Date 📅 & Time ⏳ Converter</h2>
             </div>
             <div class="nav-section">
+                <a href="/" class="nav-button">🏠 Home</a>
                 <a href="/api/docs/" class="nav-button">🚀 Try it out</a>
                 <a href="/api/redoc/" class="nav-button">📖 API Docs</a>
                 <a href="/stats/" class="nav-button">📊 Stats</a>
@@ -1202,6 +1203,97 @@ def redoc():
                 box-shadow: 0 0 28px #4157dc, 0 0 4px #00eaff;
                 border: 1px solid rgba(65, 87, 220, 0.2);
             }}
+            
+            /* Additional ReDoc styling overrides */
+            #redoc-container .redoc-wrap {{
+                background: transparent !important;
+            }}
+            
+            #redoc-container .menu-content {{
+                background: rgba(22, 26, 70, 0.9) !important;
+                border-right: 1px solid rgba(65, 87, 220, 0.3) !important;
+            }}
+            
+            #redoc-container .menu-content .menu-items {{
+                color: #a78bfa !important;
+            }}
+            
+            #redoc-container .menu-content .menu-item-title {{
+                color: #00eaff !important;
+                text-shadow: 0 0 5px rgba(0, 234, 255, 0.5) !important;
+            }}
+            
+            #redoc-container .api-content {{
+                background: rgba(22, 26, 70, 0.9) !important;
+            }}
+            
+            #redoc-container .redoc-markdown h1,
+            #redoc-container .redoc-markdown h2,
+            #redoc-container .redoc-markdown h3 {{
+                color: #00eaff !important;
+                text-shadow: 0 0 5px rgba(0, 234, 255, 0.5) !important;
+            }}
+            
+            #redoc-container .redoc-markdown p,
+            #redoc-container .redoc-markdown li {{
+                color: #a78bfa !important;
+            }}
+            
+            #redoc-container .http-verb {{
+                background: linear-gradient(135deg, #00eaff 0%, #4157dc 50%, #8b5cf6 100%) !important;
+                color: #fff !important;
+                border-radius: 6px !important;
+                box-shadow: 0 0 10px rgba(0, 234, 255, 0.3) !important;
+            }}
+            
+            #redoc-container .responses-table {{
+                background: rgba(22, 26, 70, 0.8) !important;
+                border: 1px solid rgba(65, 87, 220, 0.3) !important;
+                border-radius: 8px !important;
+            }}
+            
+            #redoc-container .param-name {{
+                color: #00eaff !important;
+                font-weight: 600 !important;
+            }}
+            
+            #redoc-container .param-type {{
+                color: #a78bfa !important;
+            }}
+            
+            #redoc-container code {{
+                background: rgba(22, 26, 70, 0.8) !important;
+                color: #00eaff !important;
+                border: 1px solid rgba(65, 87, 220, 0.3) !important;
+                border-radius: 4px !important;
+            }}
+            
+            #redoc-container pre {{
+                background: rgba(22, 26, 70, 0.9) !important;
+                border: 1px solid rgba(65, 87, 220, 0.3) !important;
+                border-radius: 8px !important;
+                box-shadow: 0 0 10px rgba(65, 87, 220, 0.2) !important;
+            }}
+            
+            /* Custom scrollbar to match theme */
+            #redoc-container *::-webkit-scrollbar {{
+                width: 8px;
+            }}
+            
+            #redoc-container *::-webkit-scrollbar-track {{
+                background: rgba(22, 26, 70, 0.5);
+                border-radius: 4px;
+            }}
+            
+            #redoc-container *::-webkit-scrollbar-thumb {{
+                background: linear-gradient(135deg, #4157dc, #8b5cf6);
+                border-radius: 4px;
+                box-shadow: 0 0 5px rgba(65, 87, 220, 0.3);
+            }}
+            
+            #redoc-container *::-webkit-scrollbar-thumb:hover {{
+                background: linear-gradient(135deg, #00eaff, #4157dc);
+            }}
         </style>
     </head>
     <body>
@@ -1211,6 +1303,7 @@ def redoc():
                 <h2 class="subtitle">The Epic Epoch Date 📅 & Time ⏳ Converter</h2>
             </div>
             <div class="nav-section">
+                <a href="/" class="nav-button">🏠 Home</a>
                 <a href="/api/docs/" class="nav-button">🚀 Try it out</a>
                 <a href="/api/redoc/" class="nav-button">📖 API Docs</a>
                 <a href="/stats/" class="nav-button">📊 Stats</a>
@@ -1286,15 +1379,46 @@ def index():
     direction = None
     input_value = ''
     timezone = ''
+    swet_result = None
+    epoch_result = None
+    datetime_result = None
+    
     if request.method == "POST":
         direction = request.form.get("direction")
         input_value = request.form.get("input_value")
         timezone = request.form.get("timezone", '')
         try:
             if direction == "epoch_to_human":
-                result = epoch_to_human(input_value, target_tz=timezone if timezone else None)
-            else:
-                result = human_to_epoch(input_value, input_tz=timezone if timezone else None)
+                epoch_val = float(input_value)
+                datetime_result = epoch_to_human(epoch_val, target_tz=timezone if timezone else None)
+                swet_result = unix_to_swet(epoch_val)
+                result = f"Epoch: {int(epoch_val) if epoch_val.is_integer() else epoch_val}\nSWET: {swet_result}\nDatetime: {datetime_result}"
+            elif direction == "human_to_epoch":
+                epoch_result = human_to_epoch(input_value, input_tz=timezone if timezone else None)
+                swet_result = unix_to_swet(epoch_result)
+                datetime_result = epoch_to_human(epoch_result, target_tz=timezone if timezone else None)
+                result = f"Epoch: {epoch_result}\nSWET: {swet_result}\nDatetime: {datetime_result}"
+            elif direction == "swet_to_human":
+                swet_val = float(input_value)
+                datetime_result = swet_to_human(swet_val, target_tz=timezone if timezone else None)
+                epoch_result = swet_to_unix(swet_val)
+                result = f"SWET: {int(swet_val) if swet_val.is_integer() else swet_val}\nEpoch: {epoch_result}\nDatetime: {datetime_result}"
+            elif direction == "human_to_swet":
+                swet_result = human_to_swet(input_value, input_tz=timezone if timezone else None)
+                epoch_result = swet_to_unix(swet_result)
+                datetime_result = swet_to_human(swet_result, target_tz=timezone if timezone else None)
+                result = f"SWET: {swet_result}\nEpoch: {epoch_result}\nDatetime: {datetime_result}"
+            elif direction == "epoch_to_swet":
+                epoch_val = float(input_value)
+                swet_result = unix_to_swet(epoch_val)
+                datetime_result = epoch_to_human(epoch_val, target_tz=timezone if timezone else None)
+                result = f"Epoch: {int(epoch_val) if epoch_val.is_integer() else epoch_val}\nSWET: {swet_result}\nDatetime: {datetime_result}"
+            elif direction == "swet_to_epoch":
+                swet_val = float(input_value)
+                epoch_result = swet_to_unix(swet_val)
+                datetime_result = swet_to_human(swet_val, target_tz=timezone if timezone else None)
+                result = f"SWET: {int(swet_val) if swet_val.is_integer() else swet_val}\nEpoch: {epoch_result}\nDatetime: {datetime_result}"
+            
             if result and not str(result).startswith("Error"):
                 increment_conversion_count()
         except Exception as e:

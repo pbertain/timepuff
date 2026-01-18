@@ -24,6 +24,10 @@
                     <select name="direction" class="conversion-dropdown" id="direction">
                         <option value="epoch_to_human" {% if direction == "epoch_to_human" or not direction %}selected{% endif %}>Epoch → Date/Time</option>
                         <option value="human_to_epoch" {% if direction == "human_to_epoch" %}selected{% endif %}>Date/Time → Epoch</option>
+                        <option value="swet_to_human" {% if direction == "swet_to_human" %}selected{% endif %}>SWET → Date/Time</option>
+                        <option value="human_to_swet" {% if direction == "human_to_swet" %}selected{% endif %}>Date/Time → SWET</option>
+                        <option value="epoch_to_swet" {% if direction == "epoch_to_swet" %}selected{% endif %}>Epoch → SWET</option>
+                        <option value="swet_to_epoch" {% if direction == "swet_to_epoch" %}selected{% endif %}>SWET → Epoch</option>
                     </select>
                 </div>
                 <div class="dropdown-container" id="timezone-container">
@@ -52,8 +56,8 @@
                     type="text"
                     name="input_value"
                     value="{{ input_value }}"
-                    placeholder="Epoch or MM/DD/YYYY HH:MM"
-                    title="Enter epoch timestamp or date in MM/DD/YYYY HH:MM format"
+                    placeholder="Epoch, SWET, or MM/DD/YYYY HH:MM"
+                    title="Enter epoch timestamp, SWET timestamp, or date in MM/DD/YYYY HH:MM format"
                     required>
                 <button type="submit">Convert</button>
             </form>
