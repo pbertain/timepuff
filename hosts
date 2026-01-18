@@ -1,7 +1,5 @@
 [pb_home]
 host74.nird.club
-host78.nird.club
-host79.nird.club
 
 [pb_home:vars]
 ansible_user=ansible
