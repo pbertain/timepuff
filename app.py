@@ -761,8 +761,9 @@ def swagger_ui():
                                             "type": "object",
                                             "properties": {{
                                                 "input": {{"type": "string", "example": "1757509860"}},
-                                                "epoch": {{"type": "integer", "example": 1757509860}},
-                                                "datetime": {{"type": "string", "example": "Wed 2025-09-10 13:11:00"}}
+                                                "epoch": {{"type": "number", "example": 1757509860}},
+                                                "swet": {{"type": "integer", "example": 1524057060}},
+                                                "datetime": {{"type": "string", "example": "Wed 2025-09-10 13:11:00 UTC"}}
                                             }}
                                         }}
                                     }}
@@ -791,7 +792,103 @@ def swagger_ui():
                                             "properties": {{
                                                 "input": {{"type": "string", "example": "2025-09-10-131100"}},
                                                 "epoch": {{"type": "integer", "example": 1757509860}},
-                                                "datetime": {{"type": "string", "example": "Wed 2025-09-10 13:11:00"}}
+                                                "swet": {{"type": "integer", "example": 1524057060}},
+                                                "datetime": {{"type": "string", "example": "2025-09-10-131100"}}
+                                            }}
+                                        }}
+                                    }}
+                                }}
+                            }}
+                        }},
+                        "/api/v1/swet/{{swet_time}}": {{
+                            "get": {{
+                                "tags": ["JSON API endpoints (v1)"],
+                                "summary": "Convert SWET time to human readable datetime",
+                                "description": "Convert SWET (Star Wars Epoch Time) to human readable datetime. Supports decimal SWET times and optional timezone parameter.",
+                                "parameters": [
+                                    {{
+                                        "name": "swet_time",
+                                        "in": "path",
+                                        "required": true,
+                                        "type": "number",
+                                        "description": "SWET timestamp (supports decimals)"
+                                    }},
+                                    {{
+                                        "name": "tz",
+                                        "in": "query",
+                                        "required": false,
+                                        "type": "string",
+                                        "description": "Target timezone (e.g., 'pst', 'utc', 'europe/london')"
+                                    }}
+                                ],
+                                "responses": {{
+                                    "200": {{
+                                        "description": "Success",
+                                        "schema": {{
+                                            "type": "object",
+                                            "properties": {{
+                                                "input": {{"type": "string", "example": "1524057060"}},
+                                                "swet": {{"type": "number", "example": 1524057060}},
+                                                "unix": {{"type": "integer", "example": 1757509860}},
+                                                "datetime": {{"type": "string", "example": "Wed 2025-09-10 13:11:00 UTC"}}
+                                            }}
+                                        }}
+                                    }}
+                                }}
+                            }}
+                        }},
+                        "/api/v1/datetime-to-swet/{{datetime_str}}": {{
+                            "get": {{
+                                "tags": ["JSON API endpoints (v1)"],
+                                "summary": "Convert human readable datetime to SWET time",
+                                "description": "Convert human readable datetime to SWET (Star Wars Epoch Time). Supports optional timezone parameter.",
+                                "parameters": [
+                                    {{
+                                        "name": "datetime_str",
+                                        "in": "path",
+                                        "required": true,
+                                        "type": "string",
+                                        "description": "Datetime string in various formats"
+                                    }},
+                                    {{
+                                        "name": "tz",
+                                        "in": "query",
+                                        "required": false,
+                                        "type": "string",
+                                        "description": "Input timezone (e.g., 'pst', 'utc', 'europe/london')"
+                                    }}
+                                ],
+                                "responses": {{
+                                    "200": {{
+                                        "description": "Success",
+                                        "schema": {{
+                                            "type": "object",
+                                            "properties": {{
+                                                "input": {{"type": "string", "example": "2025-09-10-131100"}},
+                                                "swet": {{"type": "integer", "example": 1524057060}},
+                                                "unix": {{"type": "integer", "example": 1757509860}},
+                                                "datetime": {{"type": "string", "example": "2025-09-10-131100"}}
+                                            }}
+                                        }}
+                                    }}
+                                }}
+                            }}
+                        }},
+                        "/api/v1/swet-info": {{
+                            "get": {{
+                                "tags": ["JSON API endpoints (v1)"],
+                                "summary": "Get current SWET information",
+                                "description": "Get current SWET (Star Wars Epoch Time) information and statistics.",
+                                "responses": {{
+                                    "200": {{
+                                        "description": "Success",
+                                        "schema": {{
+                                            "type": "object",
+                                            "properties": {{
+                                                "current_swet": {{"type": "integer", "example": 1535098909}},
+                                                "years_since_release": {{"type": "number", "example": 48.6}},
+                                                "swet_epoch_start": {{"type": "string", "example": "1977-05-26 00:00:00 UTC"}},
+                                                "description": {{"type": "string", "example": "Star Wars Epoch Time - seconds since the day after Star Wars: A New Hope release"}}
                                             }}
                                         }}
                                     }}
@@ -824,7 +921,7 @@ def swagger_ui():
                                         "description": "Success",
                                         "schema": {{
                                             "type": "string",
-                                            "example": "Input:     1757509860\\nEpoch:     1757509860\\nDatetime:  Wed 2025-09-10 13:11:00\\n\\n"
+                                            "example": "Input:     1757509860\\nEpoch:     1757509860\\nSWET:      1524057060\\nDatetime:  Wed 2025-09-10 13:11:00 UTC\\n\\n"
                                         }}
                                     }}
                                 }}
@@ -856,7 +953,7 @@ def swagger_ui():
                                         "description": "Success",
                                         "schema": {{
                                             "type": "string",
-                                            "example": "Input:     2025-09-10-131100\\nEpoch:     1757509860\\nDatetime:  2025-09-10-131100\\n\\n"
+                                            "example": "Input:     2025-09-10-131100\\nEpoch:     1757509860\\nSWET:      1524057060\\nDatetime:  2025-09-10-131100\\n\\n"
                                         }}
                                     }}
                                 }}
@@ -1100,9 +1197,10 @@ def redoc():
                 max-width: 1200px;
                 margin: 0 auto;
                 padding: 20px;
-                background: rgba(255, 255, 255, 0.98);
+                background: rgba(22, 26, 70, 0.95);
                 border-radius: 15px;
-                box-shadow: 0 0 20px rgba(65, 87, 220, 0.3);
+                box-shadow: 0 0 28px #4157dc, 0 0 4px #00eaff;
+                border: 1px solid rgba(65, 87, 220, 0.2);
             }}
         </style>
     </head>
@@ -1126,30 +1224,54 @@ def redoc():
                 theme: {{
                     colors: {{
                         primary: {{
-                            main: '#4157dc'
+                            main: '#00eaff'
                         }},
                         text: {{
-                            primary: '#1a237e',
-                            secondary: '#6d28d9'
+                            primary: '#00eaff',
+                            secondary: '#a78bfa'
                         }},
                         gray: {{
-                            50: '#f8f9ff',
-                            100: '#f0f0f7'
+                            50: 'rgba(22, 26, 70, 0.1)',
+                            100: 'rgba(22, 26, 70, 0.2)'
+                        }},
+                        border: {{
+                            dark: 'rgba(65, 87, 220, 0.3)',
+                            light: 'rgba(65, 87, 220, 0.1)'
+                        }},
+                        responses: {{
+                            success: {{
+                                color: '#00eaff',
+                                backgroundColor: 'rgba(0, 234, 255, 0.1)'
+                            }},
+                            error: {{
+                                color: '#ff6b9d',
+                                backgroundColor: 'rgba(255, 107, 157, 0.1)'
+                            }}
                         }}
                     }},
                     typography: {{
                         fontSize: '14px',
-                        lineHeight: '1.5em',
+                        lineHeight: '1.6em',
                         fontFamily: 'Orbitron, Consolas, Monaco, monospace',
                         code: {{
                             fontSize: '13px',
-                            color: '#1a237e',
-                            backgroundColor: '#f0f0f7'
+                            color: '#00eaff',
+                            backgroundColor: 'rgba(22, 26, 70, 0.8)',
+                            border: '1px solid rgba(65, 87, 220, 0.3)',
+                            borderRadius: '4px'
                         }},
                         headings: {{
                             fontFamily: 'Orbitron, Consolas, Monaco, monospace',
-                            color: '#1a237e'
+                            color: '#00eaff',
+                            textShadow: '0 0 5px rgba(0, 234, 255, 0.5)'
                         }}
+                    }},
+                    sidebar: {{
+                        backgroundColor: 'rgba(22, 26, 70, 0.95)',
+                        textColor: '#a78bfa'
+                    }},
+                    rightPanel: {{
+                        backgroundColor: 'rgba(22, 26, 70, 0.9)'
                     }}
                 }}
             }}, document.getElementById('redoc-container'));
