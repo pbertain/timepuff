@@ -17,6 +17,56 @@
                 <a href="https://github.com/pbertain/timepuff" target="_blank" class="nav-button">🐙 GitHub</a>
             </div>
         </div>
+
+        <section class="live-clock" id="live-clock" aria-live="polite">
+            <div class="clock-header">
+                <div class="clock-title">Live Galactic Time</div>
+                <div class="clock-subtitle">Realtime clock locked to your location.</div>
+            </div>
+            <div class="clock-display">
+                <div class="clock-line clock-human" id="clock-human">Loading time...</div>
+                <div class="clock-line">
+                    <span class="label">Epoch Time:</span>
+                    <span id="clock-epoch">—</span>
+                </div>
+                <div class="clock-line swet-line">
+                    <span class="label">SWET:</span>
+                    <span id="clock-swet">—</span>
+                    <span class="swet-tag">Star Wars Epoch Time</span>
+                </div>
+            </div>
+            <div class="clock-footer">
+                <div class="clock-tz" id="clock-tz">Timezone: <span class="clock-tz-value">Detecting...</span></div>
+                <button class="clock-link" type="button" id="clock-change">Change timezone</button>
+            </div>
+            <div class="clock-controls" id="clock-controls" aria-hidden="true">
+                <div class="clock-note">Pick the timezone you want this clock to run in.</div>
+                <div class="clock-actions">
+                    <select id="clock-timezone" class="conversion-dropdown">
+                        <option value="device">Use device timezone</option>
+                        <option value="">UTC (Coordinated Universal Time)</option>
+                        <option value="America/New_York">New York / -5 EST</option>
+                        <option value="America/Chicago">Chicago / -6 CST</option>
+                        <option value="America/Denver">Denver / -7 MST</option>
+                        <option value="America/Los_Angeles">Los Angeles / -7 PDT</option>
+                        <option value="America/Anchorage">Anchorage / -9 AKST</option>
+                        <option value="Pacific/Honolulu">Honolulu / -10 HST</option>
+                        <option value="Europe/London">London / +0 GMT</option>
+                        <option value="Europe/Paris">Paris / +1 CET</option>
+                        <option value="Europe/Berlin">Berlin / +1 CET</option>
+                        <option value="Europe/Moscow">Moscow / +3 MSK</option>
+                        <option value="Asia/Dubai">Dubai / +4 GST</option>
+                        <option value="Asia/Kolkata">Mumbai / +5:30 IST</option>
+                        <option value="Asia/Shanghai">Shanghai / +8 CST</option>
+                        <option value="Asia/Tokyo">Tokyo / +9 JST</option>
+                        <option value="Australia/Sydney">Sydney / +10 AEST</option>
+                        <option value="Pacific/Auckland">Auckland / +12 NZST</option>
+                    </select>
+                    <button type="button" class="clock-save" id="clock-save">Save</button>
+                </div>
+            </div>
+            <div class="clock-burst" aria-hidden="true"></div>
+        </section>
         
         <div class="data-entry-section">
             <form method="post">
@@ -99,6 +149,147 @@
             directionSelect.addEventListener('change', updateTimezoneLabel);
         });
     </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const clockHuman = document.getElementById('clock-human');
+            const clockEpoch = document.getElementById('clock-epoch');
+            const clockSwet = document.getElementById('clock-swet');
+            const clockTz = document.getElementById('clock-tz');
+            const clockTzValue = clockTz.querySelector('.clock-tz-value');
+            const clockControls = document.getElementById('clock-controls');
+            const clockSelect = document.getElementById('clock-timezone');
+            const clockSave = document.getElementById('clock-save');
+            const clockChange = document.getElementById('clock-change');
+            const clockRoot = document.getElementById('live-clock');
+
+            const SWET_EPOCH_UNIX = 233280000;
+            const STORAGE_KEY = 'timepuff_timezone';
+            const COOKIE_NAME = 'tp_tz';
+
+            let activeTimezone = null;
+            let lastCelebratedHour = null;
+
+            function setCookie(name, value, days) {
+                const maxAge = days * 24 * 60 * 60;
+                document.cookie = `${name}=${encodeURIComponent(value)}; Max-Age=${maxAge}; Path=/; SameSite=Lax`;
+            }
+
+            function getCookie(name) {
+                const matches = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()\\[\\]\\/\\+^])/g, '\\$1') + '=([^;]*)'));
+                return matches ? decodeURIComponent(matches[1]) : null;
+            }
+
+            function resolveDeviceTimezone() {
+                return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+            }
+
+            function loadSavedTimezone() {
+                return localStorage.getItem(STORAGE_KEY) || getCookie(COOKIE_NAME);
+            }
+
+            function saveTimezone(value) {
+                localStorage.setItem(STORAGE_KEY, value);
+                setCookie(COOKIE_NAME, value, 365);
+            }
+
+            function setActiveTimezone(value) {
+                if (value === 'device') {
+                    activeTimezone = resolveDeviceTimezone();
+                    clockTzValue.textContent = `${activeTimezone} (device)`;
+                } else if (value) {
+                    activeTimezone = value;
+                    clockTzValue.textContent = value;
+                } else {
+                    activeTimezone = 'UTC';
+                    clockTzValue.textContent = 'UTC';
+                }
+            }
+
+            function getTimeParts(now, timeZone) {
+                const formatter = new Intl.DateTimeFormat('en-US', {
+                    timeZone,
+                    weekday: 'short',
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false,
+                    timeZoneName: 'short'
+                });
+                return formatter.formatToParts(now).reduce((acc, part) => {
+                    acc[part.type] = part.value;
+                    return acc;
+                }, {});
+            }
+
+            function buildDisplayString(parts) {
+                const day = parts.day && parts.day.startsWith('0') ? ` ${parts.day.slice(1)}` : parts.day;
+                return `${parts.weekday} ${day} ${parts.month} ${parts.year} - ${parts.hour}:${parts.minute}:${parts.second} ${parts.timeZoneName}`;
+            }
+
+            function triggerHourBurst() {
+                clockRoot.classList.remove('hour-strike');
+                void clockRoot.offsetWidth;
+                clockRoot.classList.add('hour-strike');
+                setTimeout(() => clockRoot.classList.remove('hour-strike'), 1500);
+            }
+
+            function updateClock() {
+                const now = new Date();
+                const epoch = Math.floor(now.getTime() / 1000);
+                const swet = epoch - SWET_EPOCH_UNIX;
+
+                const parts = getTimeParts(now, activeTimezone);
+                clockHuman.textContent = buildDisplayString(parts);
+                clockEpoch.textContent = epoch.toString();
+                clockSwet.textContent = swet.toString();
+
+                const minutes = parseInt(parts.minute || '0', 10);
+                const seconds = parseInt(parts.second || '0', 10);
+                const currentHour = parseInt(parts.hour || '0', 10);
+                if (minutes === 0 && seconds === 0 && currentHour !== lastCelebratedHour) {
+                    lastCelebratedHour = currentHour;
+                    triggerHourBurst();
+                }
+            }
+
+            function showControls() {
+                clockControls.classList.add('is-visible');
+                clockControls.setAttribute('aria-hidden', 'false');
+            }
+
+            function hideControls() {
+                clockControls.classList.remove('is-visible');
+                clockControls.setAttribute('aria-hidden', 'true');
+            }
+
+            const saved = loadSavedTimezone();
+            if (saved) {
+                clockSelect.value = saved;
+                setActiveTimezone(saved);
+                hideControls();
+            } else {
+                clockSelect.value = 'device';
+                setActiveTimezone('device');
+                showControls();
+            }
+
+            clockSave.addEventListener('click', function() {
+                const chosen = clockSelect.value;
+                saveTimezone(chosen);
+                setActiveTimezone(chosen);
+                hideControls();
+            });
+
+            clockChange.addEventListener('click', function() {
+                showControls();
+            });
+
+            updateClock();
+            setInterval(updateClock, 1000);
+        });
+    </script>
 </body>
 </html>
-
